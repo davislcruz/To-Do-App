@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" x-data="todoApp()" x-init="init()">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Combined Todo App</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} }
+    }
+  </script>
+  <!-- Alpine.js CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white transition-colors duration-300">
+  <div class="container mx-auto p-4 max-w-2xl">
+    <!-- Header with Dark Mode Toggle -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold">To‑Do List</h1>
+      <button @click="toggleTheme()" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700">
+        <span x-text="darkMode ? 'Light Mode' : 'Dark Mode'"></span>
+      </button>
+    </div>
+
+    <!-- Task Input Section -->
+    <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <form @submit.prevent="addTask()">
+        <div class="flex flex-col gap-4">
+          <input 
+            x-model="newTask.description" 
+            type="text" 
+            placeholder="Add a new task..." 
+            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600" 
+            required>
+          <div class="flex gap-4">
+            <select 
+              x-model="newTask.priority"
+              class="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+            <input 
+              x-model="newTask.dueDate"
+              type="date"
+              class="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+            <button 
+              type="submit" 
+              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+              Add
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+      <input 
+        x-model="searchQuery" 
+        type="text" 
+        placeholder="Search tasks..."
+        class="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+      <div class="flex gap-2">
+        <button @click="filter='all'" :class="{'bg-blue-500 text-white': filter==='all', 'bg-gray-200 dark:bg-gray-700': filter!=='all'}" class="px-3 py-1 rounded hover:bg-blue-600">All</button>
+        <button @click="filter='active'" :class="{'bg-blue-500 text-white': filter==='active', 'bg-gray-200 dark:bg-gray-700': filter!=='active'}" class="px-3 py-1 rounded hover:bg-blue-600">Active</button>
+        <button @click="filter='completed'" :class="{'bg-blue-500 text-white': filter==='completed', 'bg-gray-200 dark:bg-gray-700': filter!=='completed'}" class="px-3 py-1 rounded hover:bg-blue-600">Completed</button>
+      </div>
+    </div>
+
+    <!-- Task List (Drag & Drop Container) -->
+    <div x-ref="taskList" class="space-y-2" @dragover.prevent @drop="dropTask($event)">
+      <template x-for="(task, index) in filteredTasks" :key="task.id">
+        <div 
+          draggable="true"
+          @dragstart="dragTask($event, index)"
+          class="flex items-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow"
+          :class="{
+            'border-l-4 border-green-500': task.priority==='low',
+            'border-l-4 border-yellow-500': task.priority==='medium',
+            'border-l-4 border-red-500': task.priority==='high'
+          }">
+          
+          <input 
+            type="checkbox" 
+            x-model="task.completed" 
+            @change="saveTasks()"
+            class="mr-3">
+          
+          <!-- Task display & (inline editing on double-click) -->
+          <div class="flex-1">
+            <div x-show="!task.editing" 
+                 @dblclick="enableEdit(task, index)" 
+                 :class="{'line-through text-gray-500': task.completed}">
+              <span x-text="task.description"></span>
+              <span class="text-sm text-gray-500 ml-2" x-text="task.dueDate"></span>
+            </div>
+            <input 
+              x-show="task.editing" 
+              x-model="task.description" 
+              x-ref="editInputs"
+              @blur="disableEdit(task, index)" 
+              @keyup.enter="disableEdit(task, index)" 
+              class="w-full p-1 border rounded dark:bg-gray-700 dark:text-white">
+          </div>
+          
+          <button @click="deleteTask(index)" class="ml-2 p-1 text-red-500 hover:text-red-700">✕</button>
+        </div>
+      </template>
+    </div>
+
+    <!-- Footer Controls -->
+    <div class="mt-6 flex flex-col sm:flex-row gap-4">
+      <button @click="clearCompleted()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Clear Completed</button>
+      <button @click="exportTasks()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Export Tasks</button>
+      <input type="file" @change="importTasks($event)" class="p-2 border rounded dark:bg-gray-700 dark:text-white" accept=".json">
+      <button @click="undoDelete()" :disabled="lastDeleted === null" class="px-4 py-2 bg-gray-500 text-white rounded disabled:opacity-50 hover:bg-gray-600">Undo Delete</button>
+    </div>
+  </div>
+
+  <script>
+    function todoApp() {
+      return {
+        // Dark mode state and tasks list
+        darkMode: false,
+        tasks: [],
+        newTask: { description: '', priority: 'medium', dueDate: '' },
+        filter: 'all',
+        searchQuery: '',
+        lastDeleted: null,  // { task: obj, index: number }
+        draggedIndex: null,
+
+        init() {
+          // Load dark mode preference from localStorage
+          this.darkMode = localStorage.getItem('darkMode') === 'true';
+          this.applyTheme();
+          // Load tasks from localStorage
+          const savedTasks = localStorage.getItem('tasks');
+          if (savedTasks) {
+            try {
+              this.tasks = JSON.parse(savedTasks);
+            } catch (e) {
+              console.error("Error parsing saved tasks:", e);
+              this.tasks = [];
+            }
+          }
+        },
+
+        toggleTheme() {
+          this.darkMode = !this.darkMode;
+          localStorage.setItem('darkMode', this.darkMode);
+          this.applyTheme();
+        },
+
+        applyTheme() {
+          document.documentElement.classList.toggle('dark', this.darkMode);
+        },
+
+        addTask() {
+          if (!this.newTask.description.trim()) return;
+          this.tasks.push({
+            id: Date.now(),
+            description: this.newTask.description.trim(),
+            priority: this.newTask.priority,
+            dueDate: this.newTask.dueDate,
+            completed: false,
+            editing: false
+          });
+          this.newTask = { description: '', priority: 'medium', dueDate: '' };
+          this.saveTasks();
+        },
+
+        deleteTask(index) {
+          // Save deleted task with its original index
+          this.lastDeleted = { task: this.tasks[index], index: index };
+          this.tasks.splice(index, 1);
+          this.saveTasks();
+        },
+
+        undoDelete() {
+          if (this.lastDeleted) {
+            // Reinsert the deleted task at its original index
+            this.tasks.splice(this.lastDeleted.index, 0, this.lastDeleted.task);
+            this.lastDeleted = null;
+            this.saveTasks();
+          }
+        },
+
+        clearCompleted() {
+          // Clear completed tasks; lastDeleted is cleared (undo works per deletion only)
+          this.tasks = this.tasks.filter(task => !task.completed);
+          this.lastDeleted = null;
+          this.saveTasks();
+        },
+
+        saveTasks() {
+          localStorage.setItem('tasks', JSON.stringify(this.tasks));
+        },
+
+        // Computed property: Filtered tasks based on filter and search query
+        get filteredTasks() {
+          let filtered = this.tasks.filter(task => {
+            if (this.filter === 'active') return !task.completed;
+            if (this.filter === 'completed') return task.completed;
+            return true;
+          });
+          if (this.searchQuery.trim()) {
+            filtered = filtered.filter(task =>
+              task.description.toLowerCase().includes(this.searchQuery.toLowerCase())
+            );
+          }
+          return filtered;
+        },
+
+        // Inline editing: Enable editing and focus the appropriate input
+        enableEdit(task, index) {
+          task.editing = true;
+          this.$nextTick(() => {
+            // $refs.editInputs is an array since x-ref is used in a loop
+            if (this.$refs.editInputs && this.$refs.editInputs[index]) {
+              this.$refs.editInputs[index].focus();
+            }
+          });
+        },
+
+        disableEdit(task, index) {
+          task.editing = false;
+          this.saveTasks();
+        },
+
+        // Drag and Drop: Start dragging a task
+        dragTask(event, index) {
+          this.draggedIndex = index;
+        },
+
+        // Drop task: Calculate drop index based on mouse position relative to task elements
+        dropTask(event) {
+          if (this.draggedIndex === null) return;
+          const task = this.tasks.splice(this.draggedIndex, 1)[0];
+          const dropIndex = this.getDropIndex(event);
+          this.tasks.splice(dropIndex, 0, task);
+          this.draggedIndex = null;
+          this.saveTasks();
+        },
+
+        getDropIndex(event) {
+          const elements = this.$refs.taskList.children;
+          for (let i = 0; i < elements.length; i++) {
+            const rect = elements[i].getBoundingClientRect();
+            if (event.clientY < rect.top + rect.height / 2) {
+              return i;
+            }
+          }
+          return this.tasks.length;
+        },
+
+        exportTasks() {
+          const dataStr = JSON.stringify(this.tasks, null, 2);
+          const blob = new Blob([dataStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'tasks.json';
+          link.click();
+          URL.revokeObjectURL(url);
+        },
+
+        importTasks(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const importedTasks = JSON.parse(e.target.result);
+              if (Array.isArray(importedTasks)) {
+                this.tasks = importedTasks;
+                this.saveTasks();
+              } else {
+                alert('Invalid file format');
+              }
+            } catch (error) {
+              alert('Error reading file');
+            }
+          };
+          reader.readAsText(file);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
