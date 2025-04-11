@@ -47,12 +47,27 @@
               x-model="newTask.dueDate"
               type="date"
               class="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
-            <button 
-              type="submit" 
-              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-              Add
-            </button>
           </div>
+          <!-- Additional fields for Enhanced Task Management -->
+          <div class="flex gap-4">
+            <select 
+              x-model="newTask.recurring"
+              class="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+              <option value="">None</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <textarea 
+              x-model="newTask.notes"
+              placeholder="Detailed notes (supports Markdown)..."
+              class="flex-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"></textarea>
+          </div>
+          <button 
+            type="submit" 
+            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Add Task
+          </button>
         </div>
       </form>
     </div>
@@ -77,37 +92,117 @@
         <div 
           draggable="true"
           @dragstart="dragTask($event, index)"
-          class="flex items-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow"
+          class="p-3 bg-white dark:bg-gray-800 rounded-lg shadow"
           :class="{
             'border-l-4 border-green-500': task.priority==='low',
             'border-l-4 border-yellow-500': task.priority==='medium',
             'border-l-4 border-red-500': task.priority==='high'
           }">
-          
-          <input 
-            type="checkbox" 
-            x-model="task.completed" 
-            @change="saveTasks()"
-            class="mr-3">
-          
-          <!-- Task display & (inline editing on double-click) -->
-          <div class="flex-1">
-            <div x-show="!task.editing" 
-                 @dblclick="enableEdit(task, index)" 
-                 :class="{'line-through text-gray-500': task.completed}">
-              <span x-text="task.description"></span>
-              <span class="text-sm text-gray-500 ml-2" x-text="task.dueDate"></span>
-            </div>
+          <div class="flex items-center">
             <input 
-              x-show="task.editing" 
-              x-model="task.description" 
-              x-ref="editInputs"
-              @blur="disableEdit(task, index)" 
-              @keyup.enter="disableEdit(task, index)" 
-              class="w-full p-1 border rounded dark:bg-gray-700 dark:text-white">
+              type="checkbox" 
+              x-model="task.completed" 
+              @change="saveTasks()"
+              class="mr-3">
+            
+            <!-- Task display & (inline editing on double-click) -->
+            <div class="flex-1">
+              <div x-show="!task.editing" 
+                  @dblclick="enableEdit(task, index)" 
+                  :class="{'line-through text-gray-500': task.completed}">
+                <span x-text="task.description"></span>
+                <span class="text-sm text-gray-500 ml-2" x-text="task.dueDate"></span>
+              </div>
+              <input 
+                x-show="task.editing" 
+                x-model="task.description" 
+                x-ref="editInputs"
+                @blur="disableEdit(task, index)" 
+                @keyup.enter="disableEdit(task, index)" 
+                class="w-full p-1 border rounded dark:bg-gray-700 dark:text-white">
+            </div>
+            <!-- Button to Toggle Details Panel -->
+            <button @click="toggleDetails(task)" class="ml-2 px-2 py-1 border rounded dark:border-gray-600">
+              <span x-text="task.showDetails ? 'Hide Details' : 'Details'"></span>
+            </button>
+            <!-- Delete Task -->
+            <button @click="deleteTask(index)" class="ml-2 p-1 text-red-500 hover:text-red-700">✕</button>
           </div>
           
-          <button @click="deleteTask(index)" class="ml-2 p-1 text-red-500 hover:text-red-700">✕</button>
+          <!-- Details Panel -->
+          <div x-show="task.showDetails" class="mt-4 border-t pt-3">
+            <!-- Recurring Info -->
+            <div x-show="task.recurring">
+              <strong>Recurring:</strong> <span x-text="task.recurring"></span>
+            </div>
+            <!-- Notes -->
+            <div class="mt-2">
+              <label class="block text-sm font-medium">Notes:</label>
+              <textarea 
+                x-model="task.notes"
+                @blur="saveTasks()"
+                class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"></textarea>
+            </div>
+            <!-- Attachments -->
+            <div class="mt-2">
+              <label class="block text-sm font-medium">Attachments:</label>
+              <template x-if="task.attachments && task.attachments.length">
+                <ul class="list-disc ml-5">
+                  <template x-for="(att, aIndex) in task.attachments" :key="att.id">
+                    <li>
+                      <!-- If the attachment is an image (data URL starts with "data:image/"), show a small preview -->
+                      <template x-if="att.data.startsWith('data:image/')">
+                        <img :src="att.data" alt="Attachment" class="w-16 h-16 object-cover rounded">
+                      </template>
+                      <!-- Otherwise, show as a link -->
+                      <template x-if="!att.data.startsWith('data:image/')">
+                        <a :href="att.data" download :title="att.name" class="underline text-blue-500" x-text="att.name"></a>
+                      </template>
+                    </li>
+                  </template>
+                </ul>
+              </template>
+              <!-- Button to add an attachment -->
+              <div class="mt-1">
+                <input type="file" @change="addAttachment(task, $event)" class="p-1 border rounded dark:bg-gray-700 dark:text-white" accept="*/*">
+              </div>
+            </div>
+            <!-- Subtasks Section -->
+            <div class="mt-2">
+              <label class="block text-sm font-medium">Subtasks:</label>
+              <ul class="list-disc ml-5">
+                <template x-for="(sub, sIndex) in task.subtasks" :key="sub.id">
+                  <li class="flex items-center">
+                    <input type="checkbox" x-model="sub.completed" @change="saveTasks()" class="mr-2">
+                    <span :class="{'line-through': sub.completed}" x-text="sub.description"></span>
+                    <button @click="removeSubtask(task, sIndex)" class="ml-2 text-red-500 hover:text-red-700">✕</button>
+                  </li>
+                </template>
+              </ul>
+              <div class="flex mt-2">
+                <input type="text" placeholder="Add subtask..." class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white" x-model="task.newSubtask">
+                <button @click="addSubtask(task)" class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600">Add</button>
+              </div>
+            </div>
+            <!-- Comments Section -->
+            <div class="mt-2">
+              <label class="block text-sm font-medium">Comments:</label>
+              <ul class="list-disc ml-5">
+                <template x-for="(comm, cIndex) in task.comments" :key="comm.id">
+                  <li class="flex items-center">
+                    <span x-text="comm.text"></span>
+                    <span class="text-xs text-gray-500 ml-1" x-text="comm.timestamp"></span>
+                    <button @click="removeComment(task, cIndex)" class="ml-2 text-red-500 hover:text-red-700">✕</button>
+                  </li>
+                </template>
+              </ul>
+              <div class="flex mt-2">
+                <input type="text" placeholder="Add comment..." class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white" x-model="task.newComment">
+                <button @click="addComment(task)" class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600">Add</button>
+              </div>
+            </div>
+          </div>
+          <!-- End Details Panel -->
         </div>
       </template>
     </div>
@@ -127,7 +222,8 @@
         // Dark mode state and tasks list
         darkMode: false,
         tasks: [],
-        newTask: { description: '', priority: 'medium', dueDate: '' },
+        newTask: { description: '', priority: 'medium', dueDate: '', recurring: '', notes: '', attachments: [], subtasks: [], comments: [] },
+        // Filter and search state
         filter: 'all',
         searchQuery: '',
         lastDeleted: null,  // { task: obj, index: number }
@@ -161,15 +257,23 @@
 
         addTask() {
           if (!this.newTask.description.trim()) return;
-          this.tasks.push({
+          const task = {
             id: Date.now(),
             description: this.newTask.description.trim(),
             priority: this.newTask.priority,
             dueDate: this.newTask.dueDate,
+            recurring: this.newTask.recurring,
+            notes: this.newTask.notes,
+            attachments: [],
+            subtasks: [],
+            comments: [],
             completed: false,
-            editing: false
-          });
-          this.newTask = { description: '', priority: 'medium', dueDate: '' };
+            editing: false,
+            showDetails: false
+          };
+          this.tasks.push(task);
+          // Reset newTask
+          this.newTask = { description: '', priority: 'medium', dueDate: '', recurring: '', notes: '', attachments: [], subtasks: [], comments: []  };
           this.saveTasks();
         },
 
@@ -286,6 +390,61 @@
             }
           };
           reader.readAsText(file);
+        },
+
+        // Toggle details panel
+        toggleDetails(task) {
+          task.showDetails = !task.showDetails;
+          this.saveTasks();
+        },
+
+        // Subtasks functions
+        addSubtask(task) {
+          if (!task.newSubtask || !task.newSubtask.trim()) return;
+          const subtask = { id: Date.now(), description: task.newSubtask.trim(), completed: false, editing: false };
+          if (!task.subtasks) task.subtasks = [];
+          task.subtasks.push(subtask);
+          task.newSubtask = '';
+          this.saveTasks();
+        },
+
+        toggleSubtask(task, subtask) {
+          subtask.completed = !subtask.completed;
+          this.saveTasks();
+        },
+
+        removeSubtask(task, index) {
+          task.subtasks.splice(index, 1);
+          this.saveTasks();
+        },
+
+        // Comments functions
+        addComment(task) {
+          if (!task.newComment || !task.newComment.trim()) return;
+          const comment = { id: Date.now(), text: task.newComment.trim(), timestamp: new Date().toLocaleString() };
+          if (!task.comments) task.comments = [];
+          task.comments.push(comment);
+          task.newComment = '';
+          this.saveTasks();
+        },
+
+        removeComment(task, index) {
+          task.comments.splice(index, 1);
+          this.saveTasks();
+        },
+
+        // Attachments function
+        addAttachment(task, event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const attachment = { id: Date.now(), name: file.name, data: e.target.result };
+            if (!task.attachments) task.attachments = [];
+            task.attachments.push(attachment);
+            this.saveTasks();
+          };
+          reader.readAsDataURL(file);
         }
       }
     }
