@@ -1,549 +1,472 @@
+<!--
+  A simple, responsive checklist app built with Alpine.js and Tailwind CSS.
+  Features include list creation, item completion, deletion, dark mode, and local storage.
+  Open source under the MIT license. Created by Davis Cruz. Ongoing development on GitHub.
+-->
 <!DOCTYPE html>
-<html lang="en" x-data="todoApp()" x-init="init()">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Combined Todo App</title>
-    <!-- Tailwind CSS CDN -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Checklist — Alpine.js + Heroicons</title>
+
+    <!-- Google Fonts (Inter) -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
+
+    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         darkMode: "class",
-        theme: { extend: {} },
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: [
+                "Inter",
+                "ui-sans-serif",
+                "system-ui",
+                "-apple-system",
+                "BlinkMacSystemFont",
+                "Segoe UI",
+                "Roboto",
+                "Helvetica Neue",
+                "Arial",
+                "sans-serif",
+              ],
+            },
+            colors: {
+              brand: {
+                50: "#f0fdfa",
+                100: "#ccfbf1",
+                400: "#2dd4bf",
+                600: "#0d9488",
+                700: "#0f766e",
+              },
+              danger: {
+                50: "#fef2f2",
+                100: "#fee2e2",
+                400: "#f87171",
+                600: "#dc2626",
+                700: "#b91c1c",
+              },
+              surface: {
+                50: "#ffffff",
+                100: "#f8fafc",
+                800: "#1f2937",
+                900: "#111827",
+              },
+              neutral: {
+                50: "#f9fafb",
+                100: "#f3f4f6",
+                200: "#e5e7eb",
+                700: "#374151",
+                800: "#1f2937",
+              },
+            },
+            boxShadow: {
+              card: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
+              "card-dark":
+                "0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2)",
+            },
+            borderRadius: {
+              xl: "1rem",
+              "2xl": "1.5rem",
+            },
+            transitionProperty: {
+              "transform-opacity": "transform, opacity",
+            },
+            keyframes: {
+              "scale-in": {
+                "0%": { transform: "scale(0.95)", opacity: "0" },
+                "100%": { transform: "scale(1)", opacity: "1" },
+              },
+            },
+            animation: {
+              "scale-in": "scale-in 0.2s ease-out",
+            },
+          },
+        },
       };
     </script>
-    <script defer src="todo-app.js"></script>
-    <!-- Alpine.js CDN -->
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
     ></script>
   </head>
+
   <body
-    class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white transition-colors duration-300"
+    class="min-h-screen bg-surface-100 dark:bg-surface-900 text-neutral-800 dark:text-neutral-100 font-sans transition-colors duration-300 selection:bg-brand-100 selection:text-neutral-900"
   >
-    <div class="container mx-auto p-4 max-w-2xl">
-      <!-- Header with Dark Mode Toggle -->
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">To‑Do List</h1>
+    <main
+      class="w-full max-w-3xl mx-auto p-6 flex flex-col gap-10"
+      x-data="todoApp()"
+      x-init="load()"
+    >
+      <!-- Improved dark mode toggle mode with this dynamic version -->
+      <div class="w-full flex justify-end mb-2">
         <button
+          class="flex items-center gap-2 p-2.5 rounded-xl bg-surface-50 dark:bg-surface-800 text-neutral-600 dark:text-neutral-300 hover:bg-surface-200 dark:hover:bg-surface-700 focus:ring-2 focus:ring-brand-400 shadow-md transition-all"
           @click="toggleTheme()"
-          class="flex items-center px-3 py-1 rounded bg-gray-200 dark:bg-gray-700"
-          aria-label="Toggle dark mode"
+          x-data="{ 
+      isDark: document.documentElement.classList.contains('dark'),
+      toggleTheme() {
+        this.isDark = !this.isDark;
+        document.documentElement.classList.toggle('dark');
+      }
+    }"
         >
-          <template x-if="darkMode">
-            <!-- Sun icon (indicates switching to light mode) -->
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </template>
-          <template x-if="!darkMode">
-            <!-- Moon icon (indicates switching to dark mode) -->
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"
-              />
-            </svg>
-          </template>
-          <span x-text="darkMode ? 'Light Mode' : 'Dark Mode'"></span>
+          <span
+            class="text-sm font-medium"
+            x-text="isDark ? 'Light mode' : 'Dark mode'"
+          ></span>
+
+          <!-- Sun icon (shown in dark mode) -->
+          <svg
+            x-show="isDark"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+            ></path>
+          </svg>
+
+          <!-- Moon icon (shown in light mode) -->
+          <svg
+            x-show="!isDark"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+            ></path>
+          </svg>
         </button>
       </div>
 
-      <!-- Task Input Section -->
-      <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-        <form @submit.prevent="addTask()">
-          <div class="flex flex-col gap-4">
-            <input
-              x-model="newTask.description"
-              type="text"
-              placeholder="Task title..."
-              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              aria-label="Task title"
-              required
-            />
-
-            <!-- Row containing Priority, Due Date, and Recurring (each flex-1) -->
-            <div class="flex flex-wrap gap-4">
-              <select
-                x-model="newTask.priority"
-                class="p-2 flex-1 rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                aria-label="Priority"
-              >
-                <option value="low">Low</option>
-                <option value="medium" selected>Medium</option>
-                <option value="high">High</option>
-              </select>
-              <input
-                x-model="newTask.dueDate"
-                type="date"
-                class="p-2 flex-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                aria-label="Due date"
-              />
-              <select
-                x-model="newTask.recurring"
-                class="p-2 flex-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                aria-label="Recurring schedule"
-              >
-                <option value="">None</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-
-            <!-- Task Detailed Notes (Full Row) -->
-            <textarea
-              x-model="newTask.notes"
-              placeholder="Detailed notes (supports Markdown)..."
-              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              aria-label="Task notes"
-            ></textarea>
-
-            <button
-              type="submit"
-              class="flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              <span>Add Task</span>
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Filters and Search -->
-      <div class="flex flex-col sm:flex-row gap-4 mb-6">
-        <div class="relative flex-1">
-          <div
-            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 text-gray-400"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-          <input
-            x-model.trim="searchQuery"
-            type="text"
-            placeholder="Search tasks..."
-            class="p-2 pl-10 border w-full rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-            aria-label="Search tasks"
-          />
-        </div>
-        <div class="flex gap-2">
-          <button
-            @click="filter='all'"
-            :class="{'bg-blue-500 text-white': filter==='all', 'bg-gray-200 dark:bg-gray-700': filter!=='all'}"
-            class="px-3 py-1 rounded hover:bg-blue-600"
-          >
-            All
-          </button>
-          <button
-            @click="filter='active'"
-            :class="{'bg-blue-500 text-white': filter==='active', 'bg-gray-200 dark:bg-gray-700': filter!=='active'}"
-            class="px-3 py-1 rounded hover:bg-blue-600"
-          >
-            Active
-          </button>
-          <button
-            @click="filter='completed'"
-            :class="{'bg-blue-500 text-white': filter==='completed', 'bg-gray-200 dark:bg-gray-700': filter!=='completed'}"
-            class="px-3 py-1 rounded hover:bg-blue-600"
-          >
-            Completed
-          </button>
-        </div>
-      </div>
-
-      <!-- Task List (Drag & Drop Container) -->
-      <div
-        x-ref="taskList"
-        class="space-y-2"
-        @dragover.prevent
-        @drop="dropTask($event)"
-        aria-label="Tasks"
+      <h1
+        class="text-4xl font-semibold tracking-tight text-center text-neutral-800 dark:text-neutral-100"
       >
-        <template x-for="(task, index) in filteredTasks" :key="task.id">
-          <div
-            draggable="true"
-            @dragstart="dragTask($event, index)"
-            class="p-3 bg-white dark:bg-gray-800 rounded-lg shadow"
-            :class="{
-            'border-l-4 border-green-500': task.priority==='low',
-            'border-l-4 border-yellow-500': task.priority==='medium',
-            'border-l-4 border-red-500': task.priority==='high'
-          }"
-            role="listitem"
-          >
-            <div class="flex items-center">
+        My Lists
+      </h1>
+
+      <!-- Composer -->
+      <form
+        @submit.prevent="addList"
+        class="rounded-2xl border border-surface-50 dark:border-neutral-800 shadow-card dark:shadow-card-dark bg-surface-50/80 dark:bg-surface-800/80 backdrop-blur-md p-6 space-y-5 transition-all"
+      >
+        <input
+          x-model.trim="draft.title"
+          required
+          placeholder="List title…"
+          class="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 bg-transparent focus:ring-2 focus:ring-brand-400 focus:border-transparent placeholder:text-neutral-400 dark:placeholder:text-neutral-500 transition-all"
+        />
+
+        <template x-for="(txt, idx) in draft.items" :key="idx">
+          <div class="flex items-stretch gap-3">
+            <div
+              class="flex flex-1 items-stretch border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-brand-400 transition-all"
+            >
               <input
-                type="checkbox"
-                x-model="task.completed"
-                @change="saveTasks()"
-                class="mr-3"
-                :aria-label="`Mark ${task.description} as ${task.completed ? 'incomplete' : 'complete'}`"
+                x-model.trim="draft.items[idx]"
+                placeholder="Sub-task…"
+                class="flex-1 border-none p-3 bg-transparent placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none"
               />
 
-              <!-- Task display & (inline editing on double-click) -->
-              <div class="flex-1">
-                <div
-                  x-show="!task.editing"
-                  @dblclick="enableEdit(task, index)"
-                  :class="{'line-through text-gray-500': task.completed}"
-                >
-                  <span x-text="task.description"></span>
-                  <span
-                    class="text-sm text-gray-500 ml-2"
-                    x-text="task.dueDate"
-                  ></span>
-                </div>
-                <input
-                  x-show="task.editing"
-                  x-model="task.description"
-                  x-ref="editInputs"
-                  @blur="disableEdit(task, index)"
-                  @keyup.enter="disableEdit(task, index)"
-                  class="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <!-- Button to Toggle Details Panel -->
               <button
-                @click="toggleDetails(task)"
-                class="ml-2 flex items-center px-2 py-1 border rounded dark:border-gray-600 transition-colors duration-300"
-                :aria-expanded="task.showDetails"
-                :aria-label="`${task.showDetails ? 'Hide' : 'Show'} details for ${task.description}`"
+                type="button"
+                @click="addDraftItem"
+                x-show="idx === draft.items.length - 1"
+                class="px-4 py-2 bg-brand-50 dark:bg-brand-700/20 text-brand-600 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-700/30 focus:ring-2 focus:ring-brand-400 transition hover:scale-105"
               >
-                <span
-                  x-text="task.showDetails ? 'Hide Details' : 'Details'"
-                ></span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4 ml-1 transition-transform duration-300"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  :class="{'rotate-180': task.showDetails}"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
+                <span x-html="$hero('plus')"></span>
               </button>
-              <!-- Delete Task -->
-              <button
-                @click="deleteTask(index)"
-                class="ml-2 p-1 text-red-500 hover:text-red-700"
-                aria-label="Delete task: ${task.description}"
-              >
-                ✕
-              </button>
-            </div>
 
-            <!-- Details Panel -->
-            <div x-show="task.showDetails" class="mt-4 border-t pt-3">
-              <!-- Recurring Info -->
-              <div x-show="task.recurring">
-                <strong>Recurring:</strong>
-                <span x-text="task.recurring"></span>
-              </div>
-              <!-- Notes -->
-              <div class="mt-2">
-                <label class="block text-sm font-medium" for="notes-${index}"
-                  >Notes:</label
-                >
-                <textarea
-                  id="notes-${index}"
-                  x-model="task.notes"
-                  @blur="saveTasks()"
-                  class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                  aria-label="Notes for task: ${task.description}"
-                ></textarea>
-              </div>
-              <!-- Attachments -->
-              <div class="mt-2">
-                <label
-                  class="block text-sm font-medium"
-                  for="attachments-${index}"
-                  >Attachments:</label
-                >
-                <template x-if="task.attachments && task.attachments.length">
-                  <ul class="list-disc ml-5">
-                    <template
-                      x-for="(att, aIndex) in task.attachments"
-                      :key="att.id"
-                    >
-                      <li>
-                        <template x-if="att.data.startsWith('data:image/')">
-                          <img
-                            :src="att.data"
-                            alt="Attachment preview"
-                            class="w-16 h-16 object-cover rounded"
-                          />
-                        </template>
-                        <template x-if="!att.data.startsWith('data:image/')">
-                          <a
-                            :href="att.data"
-                            download
-                            :title="att.name"
-                            class="underline text-blue-500"
-                            x-text="att.name"
-                            aria-label="Download attachment: ${att.name}"
-                          ></a>
-                        </template>
-                      </li>
-                    </template>
-                  </ul>
-                </template>
-                <div class="mt-1">
-                  <input
-                    id="attachments-${index}"
-                    type="file"
-                    @change="addAttachment(task, $event)"
-                    class="p-1 border rounded dark:bg-gray-700 dark:text-white"
-                    accept="*/*"
-                    aria-label="Add attachment for task: ${task.description}"
-                  />
-                </div>
-              </div>
-              <!-- Subtasks Section -->
-              <div class="mt-2">
-                <label class="block text-sm font-medium" for="subtasks-${index}"
-                  >Subtasks:</label
-                >
-                <ul class="list-disc ml-5">
-                  <template
-                    x-for="(sub, sIndex) in task.subtasks"
-                    :key="sub.id"
-                  >
-                    <li class="flex items-center">
-                      <input
-                        type="checkbox"
-                        x-model="sub.completed"
-                        @change="saveTasks()"
-                        class="mr-2"
-                        :aria-label="`Mark subtask ${sub.description} as ${sub.completed ? 'incomplete' : 'complete'}`"
-                      />
-                      <span
-                        :class="{'line-through': sub.completed}"
-                        x-text="sub.description"
-                      ></span>
-                      <button
-                        @click="removeSubtask(task, sIndex)"
-                        class="ml-2 text-red-500 hover:text-red-700"
-                        aria-label="Remove subtask: ${sub.description}"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  </template>
-                </ul>
-                <div class="flex mt-2">
-                  <input
-                    id="subtasks-${index}"
-                    type="text"
-                    placeholder="Add subtask..."
-                    class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white"
-                    x-model="task.newSubtask"
-                    aria-label="New subtask for task: ${task.description}"
-                  />
-                  <button
-                    @click="addSubtask(task)"
-                    class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                    aria-label="Add subtask to task: ${task.description}"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-              <!-- Comments Section -->
-              <div class="mt-2">
-                <label class="block text-sm font-medium" for="comments-${index}"
-                  >Comments:</label
-                >
-                <ul class="list-disc ml-5">
-                  <template
-                    x-for="(comm, cIndex) in task.comments"
-                    :key="comm.id"
-                  >
-                    <li class="flex items-center">
-                      <span x-text="comm.text"></span>
-                      <span
-                        class="text-xs text-gray-500 ml-1"
-                        x-text="comm.timestamp"
-                      ></span>
-                      <button
-                        @click="removeComment(task, cIndex)"
-                        class="ml-2 text-red-500 hover:text-red-700"
-                        aria-label="Remove comment: ${comm.text}"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  </template>
-                </ul>
-                <div class="flex mt-2">
-                  <input
-                    id="comments-${index}"
-                    type="text"
-                    placeholder="Add comment..."
-                    class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white"
-                    x-model="task.newComment"
-                    aria-label="New comment for task: ${task.description}"
-                  />
-                  <button
-                    @click="addComment(task)"
-                    class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                    aria-label="Add comment to task: ${task.description}"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                @click="removeDraftItem(idx)"
+                x-show="idx !== draft.items.length - 1"
+                class="px-4 py-2 bg-danger-50 dark:bg-danger-700/20 text-danger-600 dark:text-danger-300 hover:bg-danger-100 dark:hover:bg-danger-700/30 focus:ring-2 focus:ring-danger-400 transition hover:scale-105"
+              >
+                <span x-html="$hero('x')"></span>
+              </button>
             </div>
-            <!-- End Details Panel -->
           </div>
         </template>
-      </div>
 
-      <!-- Footer Controls -->
-      <div class="mt-6 flex flex-col sm:flex-row gap-4">
-        <!-- Clear Completed with Check Icon -->
-        <button
-          @click="clearCompleted()"
-          class="flex items-center justify-center flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300"
-          :disabled="!hasCompletedTasks"
-          :class="{'opacity-50 cursor-not-allowed': !hasCompletedTasks}"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 mr-1"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div class="flex justify-end">
+          <!-- Replace the button in the form with this updated version -->
+          <button
+            :disabled="!draft.title"
+            class="rounded-xl px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium shadow-md hover:shadow-lg focus:ring-2 focus:ring-brand-400 focus:ring-offset-2 dark:focus:ring-offset-surface-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-          <span>Clear Completed</span>
-        </button>
-        <!-- Export Tasks with Download Icon -->
-        <button
-          @click="exportTasks()"
-          class="flex items-center justify-center flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-300"
+            Create list
+          </button>
+        </div>
+      </form>
+
+      <!-- Lists -->
+      <template x-for="(list, li) in lists" :key="list.id">
+        <article
+          x-cloak
+          x-transition
+          x-show="true"
+          class="rounded-2xl border border-surface-50 dark:border-neutral-800 shadow-card dark:shadow-card-dark bg-surface-50/80 dark:bg-surface-800/80 backdrop-blur-md overflow-hidden transition-all"
+          style="animation: scale-in 0.2s ease-out"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 mr-1"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+          <header
+            class="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 16v1a2 2 0 002 2h14a2 2 0 002-2v-1M7 10l5 5m0 0l5-5m-5 5V3"
-            />
-          </svg>
-          <span>Export Tasks</span>
-        </button>
-        <!-- Import Tasks with Arrow-Up-Tray Icon -->
-        <button
-          @click="triggerFileInput()"
-          class="flex items-center justify-center flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300"
-        >
-          <!-- Arrow-Up-Tray Icon -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
+            <div class="flex items-center gap-4">
+              <label
+                class="flex items-center gap-2 select-none"
+                :class="showComplete(list) ? '' : 'hidden'"
+              >
+                <template x-if="list.items.length === 0">
+                  <input
+                    type="checkbox"
+                    class="h-5 w-5 rounded-md accent-brand-600 focus:ring-brand-400"
+                    x-model="list.completed"
+                    @change="toggleComplete()"
+                  />
+                </template>
+                <template x-if="list.items.length > 0">
+                  <input
+                    type="checkbox"
+                    class="h-5 w-5 rounded-md accent-brand-600"
+                    :checked="allDone(list)"
+                    disabled
+                  />
+                </template>
+                <span class="text-sm text-neutral-500 dark:text-neutral-400"
+                  >Done</span
+                >
+              </label>
+
+              <h2
+                class="font-semibold text-xl tracking-tight text-neutral-800 dark:text-neutral-100"
+                x-text="list.title"
+              ></h2>
+            </div>
+
+            <button
+              @click="deleteList(li)"
+              aria-label="Delete list"
+              title="Delete list"
+              class="p-2 bg-danger-50 dark:bg-danger-700/20 text-danger-600 dark:text-danger-300 hover:bg-danger-100 dark:hover:bg-danger-700/30 rounded-lg focus:ring-2 focus:ring-danger-400 transition hover:scale-105"
+            >
+              <span x-html="$hero('x')"></span>
+            </button>
+          </header>
+
+          <div class="flex items-center gap-4 px-6 py-4">
+            <p
+              class="shrink-0 text-sm text-neutral-600 dark:text text-neutral-500"
+              x-text="`${doneCount(list)}/${totalCount(list)} completed`"
+            ></p>
+            <div
+              class="flex-1 h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden"
+            >
+              <div
+                class="h-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all duration-300"
+                :style="`width:${progressPercent(list)}%`"
+              ></div>
+            </div>
+            <button
+              x-show="list.items.length"
+              @click="list.collapsed = !list.collapsed; save()"
+              class="p-2 text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100 rounded-full focus:ring-2 focus:ring-brand-400 transition"
+              :title="list.collapsed ? 'Show checklist' : 'Hide checklist'"
+            >
+              <span
+                x-html="$hero(list.collapsed ? 'chevron-down' : 'chevron-up')"
+              ></span>
+            </button>
+          </div>
+
+          <div
+            x-show="!list.collapsed"
+            x-transition.opacity.duration.300ms
+            class="px-6 pb-6 space-y-4"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-            />
-          </svg>
-          <span>Import Tasks</span>
-        </button>
-        <input
-          type="file"
-          id="fileInput"
-          @change="importTasks($event)"
-          class="hidden"
-          accept=".json"
-        />
-        <!-- Undo Delete with Arrow-Uturn-Down Icon -->
-        <button
-          @click="undoDelete()"
-          :disabled="lastDeleted === null"
-          class="flex items-center justify-center flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors duration-300"
-          :class="{'opacity-50 cursor-not-allowed': lastDeleted === null}"
-        >
-          <!-- Arrow-Uturn-Down Icon -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="1.5"
-            stroke="currentColor"
-            class="size-5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
-            />
-          </svg>
-          <span>Undo Delete</span>
-        </button>
-      </div>
-    </div>
+            <ul class="space-y-3">
+              <template x-for="(item, ii) in list.items" :key="item.id">
+                <li class="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    class="h-5 w-5 rounded-md accent-brand-600 focus:ring-brand-400"
+                    x-model="item.done"
+                    @change="save()"
+                  />
+                  <span
+                    x-text="item.text"
+                    :class="{'line-through text-neutral-500 dark:text-neutral-400': item.done}"
+                    class="flex-1 text-neutral-800 dark:text-neutral-100"
+                  ></span>
+                  <button
+                    @click="deleteItem(list, ii)"
+                    aria-label="Remove item"
+                    class="p-2 bg-danger-50 dark:bg-danger-700/20 text-danger-600 dark:text-danger-300 hover:bg-danger-100 dark:hover:bg-danger-700/30 rounded-lg focus:ring-2 focus:ring-danger-400 transition hover:scale-105"
+                  >
+                    <span x-html="$hero('x')"></span>
+                  </button>
+                </li>
+              </template>
+            </ul>
+
+            <form class="mt-4" @submit.prevent="addItem(list)">
+              <div
+                class="flex items-stretch border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-brand-400 transition-all"
+              >
+                <input
+                  x-model.trim="list.newItem"
+                  placeholder="Add item…"
+                  class="flex-1 border-none p-3 bg-transparent placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none"
+                />
+                <button
+                  class="px-4 py-2 bg-brand-50 dark:bg-brand-700/20 text-brand-600 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-700/30 focus:ring-2 focus:ring-brand-400 transition hover:scale-105"
+                >
+                  <span x-html="$hero('plus')"></span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </article>
+      </template>
+    </main>
+
+    <!-- Heroicons + App Logic -->
+    <script>
+      document.addEventListener("alpine:init", () => {
+        const outline = {
+          plus: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>`,
+          x: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`,
+          "chevron-down": `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>`,
+          "chevron-up": `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg>`,
+        };
+        Alpine.magic(
+          "hero",
+          () =>
+            (name, cls = "w-5 h-5") =>
+              outline[name].replace("w-5 h-5", cls)
+        );
+      });
+
+      function id() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2);
+      }
+      function todoApp() {
+        return {
+          lists: [],
+          draft: { title: "", items: [""] },
+          STORAGE_KEY: "checklist-lists",
+
+          load() {
+            try {
+              this.lists =
+                JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || [];
+            } catch {
+              this.lists = [];
+            }
+            this.lists.forEach((l) => {
+              l.newItem ??= "";
+              l.collapsed ??= !!l.items.length;
+            });
+          },
+          save() {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.lists));
+          },
+
+          addDraftItem() {
+            this.draft.items.push("");
+          },
+          removeDraftItem(i) {
+            this.draft.items.splice(i, 1);
+            if (this.draft.items.length === 0) this.draft.items.push("");
+          },
+
+          addList() {
+            if (!this.draft.title) return;
+            const items = this.draft.items
+              .filter((t) => t.trim())
+              .map((t) => ({ id: id(), text: t.trim(), done: false }));
+            this.lists.push({
+              id: id(),
+              title: this.draft.title,
+              items,
+              collapsed: !!items.length,
+              completed: false,
+              newItem: "",
+            });
+            this.draft = { title: "", items: [""] };
+            this.save();
+          },
+          deleteList(idx) {
+            this.lists.splice(idx, 1);
+            this.save();
+          },
+          toggleComplete() {
+            this.save();
+          },
+
+          addItem(list) {
+            if (!list.newItem) return;
+            list.items.push({ id: id(), text: list.newItem, done: false });
+            list.newItem = "";
+            list.completed = false;
+            list.collapsed = false;
+            this.save();
+          },
+          deleteItem(list, ii) {
+            list.items.splice(ii, 1);
+            if (!list.items.length) {
+              list.completed = false;
+              list.collapsed = false;
+            }
+            this.save();
+          },
+
+          doneCount(l) {
+            return l.items.length
+              ? l.items.filter((i) => i.done).length
+              : l.completed
+              ? 1
+              : 0;
+          },
+          totalCount(l) {
+            return l.items.length || 1;
+          },
+          progressPercent(l) {
+            return (this.doneCount(l) / this.totalCount(l)) * 100;
+          },
+          allDone(l) {
+            return l.items.length && l.items.every((i) => i.done);
+          },
+          showComplete(l) {
+            return l.items.length === 0 || this.allDone(l);
+          },
+        };
+      }
+    </script>
   </body>
 </html>
+<!--
+  A simple, responsive checklist app built with Alpine.js and Tailwind CSS.
+  Features include list creation, item completion, deletion, dark mode, and local storage.
+  Open source under the MIT license. Created by Davis Cruz. Ongoing development on GitHub.
+-->
