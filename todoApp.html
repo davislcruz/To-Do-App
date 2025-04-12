@@ -59,13 +59,12 @@
             </select>
           </div>
 
-          <!-- Detailed Notes (Full Row) -->
-          <div class="flex gap-4">
-            <textarea 
-              x-model="newTask.notes"
-              placeholder="Detailed notes (supports Markdown)..."
-              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"></textarea>
-          </div>
+          <!-- Task Detailed Notes (Full Row) -->
+          <textarea 
+            x-model="newTask.notes"
+            placeholder="Detailed notes (supports Markdown)..."
+            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"></textarea>
+
           <button 
             type="submit" 
             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
@@ -78,7 +77,7 @@
     <!-- Filters and Search -->
     <div class="flex flex-col sm:flex-row gap-4 mb-6">
       <input 
-        x-model="searchQuery" 
+        x-model.trim="searchQuery" 
         type="text" 
         placeholder="Search tasks..."
         class="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
@@ -218,239 +217,6 @@
       <button @click="undoDelete()" :disabled="lastDeleted === null" class="px-4 py-2 bg-gray-500 text-white rounded disabled:opacity-50 hover:bg-gray-600">Undo Delete</button>
     </div>
   </div>
-
-  <script>
-    function todoApp() {
-      return {
-        // Dark mode state and tasks list
-        darkMode: false,
-        tasks: [],
-        newTask: { description: '', priority: 'medium', dueDate: '', recurring: '', notes: '', attachments: [], subtasks: [], comments: [] },
-        // Filter and search state
-        filter: 'all',
-        searchQuery: '',
-        lastDeleted: null,  // { task: obj, index: number }
-        draggedIndex: null,
-
-        init() {
-          // Load dark mode preference from localStorage
-          this.darkMode = localStorage.getItem('darkMode') === 'true';
-          this.applyTheme();
-          // Load tasks from localStorage
-          const savedTasks = localStorage.getItem('tasks');
-          if (savedTasks) {
-            try {
-              this.tasks = JSON.parse(savedTasks);
-            } catch (e) {
-              console.error("Error parsing saved tasks:", e);
-              this.tasks = [];
-            }
-          }
-        },
-
-        toggleTheme() {
-          this.darkMode = !this.darkMode;
-          localStorage.setItem('darkMode', this.darkMode);
-          this.applyTheme();
-        },
-
-        applyTheme() {
-          document.documentElement.classList.toggle('dark', this.darkMode);
-        },
-
-        addTask() {
-          if (!this.newTask.description.trim()) return;
-          const task = {
-            id: Date.now(),
-            description: this.newTask.description.trim(),
-            priority: this.newTask.priority,
-            dueDate: this.newTask.dueDate,
-            recurring: this.newTask.recurring,
-            notes: this.newTask.notes,
-            attachments: [],
-            subtasks: [],
-            comments: [],
-            completed: false,
-            editing: false,
-            showDetails: false
-          };
-          this.tasks.push(task);
-          // Reset newTask
-          this.newTask = { description: '', priority: 'medium', dueDate: '', recurring: '', notes: '', attachments: [], subtasks: [], comments: []  };
-          this.saveTasks();
-        },
-
-        deleteTask(index) {
-          // Save deleted task with its original index
-          this.lastDeleted = { task: this.tasks[index], index: index };
-          this.tasks.splice(index, 1);
-          this.saveTasks();
-        },
-
-        undoDelete() {
-          if (this.lastDeleted) {
-            // Reinsert the deleted task at its original index
-            this.tasks.splice(this.lastDeleted.index, 0, this.lastDeleted.task);
-            this.lastDeleted = null;
-            this.saveTasks();
-          }
-        },
-
-        clearCompleted() {
-          // Clear completed tasks; lastDeleted is cleared (undo works per deletion only)
-          this.tasks = this.tasks.filter(task => !task.completed);
-          this.lastDeleted = null;
-          this.saveTasks();
-        },
-
-        saveTasks() {
-          localStorage.setItem('tasks', JSON.stringify(this.tasks));
-        },
-
-        // Computed property: Filtered tasks based on filter and search query
-        get filteredTasks() {
-          let filtered = this.tasks.filter(task => {
-            if (this.filter === 'active') return !task.completed;
-            if (this.filter === 'completed') return task.completed;
-            return true;
-          });
-          if (this.searchQuery.trim()) {
-            filtered = filtered.filter(task =>
-              task.description.toLowerCase().includes(this.searchQuery.toLowerCase())
-            );
-          }
-          return filtered;
-        },
-
-        // Inline editing: Enable editing and focus the appropriate input
-        enableEdit(task, index) {
-          task.editing = true;
-          this.$nextTick(() => {
-            // $refs.editInputs is an array since x-ref is used in a loop
-            if (this.$refs.editInputs && this.$refs.editInputs[index]) {
-              this.$refs.editInputs[index].focus();
-            }
-          });
-        },
-
-        disableEdit(task, index) {
-          task.editing = false;
-          this.saveTasks();
-        },
-
-        // Drag and Drop: Start dragging a task
-        dragTask(event, index) {
-          this.draggedIndex = index;
-        },
-
-        // Drop task: Calculate drop index based on mouse position relative to task elements
-        dropTask(event) {
-          if (this.draggedIndex === null) return;
-          const task = this.tasks.splice(this.draggedIndex, 1)[0];
-          const dropIndex = this.getDropIndex(event);
-          this.tasks.splice(dropIndex, 0, task);
-          this.draggedIndex = null;
-          this.saveTasks();
-        },
-
-        getDropIndex(event) {
-          const elements = this.$refs.taskList.children;
-          for (let i = 0; i < elements.length; i++) {
-            const rect = elements[i].getBoundingClientRect();
-            if (event.clientY < rect.top + rect.height / 2) {
-              return i;
-            }
-          }
-          return this.tasks.length;
-        },
-
-        exportTasks() {
-          const dataStr = JSON.stringify(this.tasks, null, 2);
-          const blob = new Blob([dataStr], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = 'tasks.json';
-          link.click();
-          URL.revokeObjectURL(url);
-        },
-
-        importTasks(event) {
-          const file = event.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            try {
-              const importedTasks = JSON.parse(e.target.result);
-              if (Array.isArray(importedTasks)) {
-                this.tasks = importedTasks;
-                this.saveTasks();
-              } else {
-                alert('Invalid file format');
-              }
-            } catch (error) {
-              alert('Error reading file');
-            }
-          };
-          reader.readAsText(file);
-        },
-
-        // Toggle details panel
-        toggleDetails(task) {
-          task.showDetails = !task.showDetails;
-          this.saveTasks();
-        },
-
-        // Subtasks functions
-        addSubtask(task) {
-          if (!task.newSubtask || !task.newSubtask.trim()) return;
-          const subtask = { id: Date.now(), description: task.newSubtask.trim(), completed: false, editing: false };
-          if (!task.subtasks) task.subtasks = [];
-          task.subtasks.push(subtask);
-          task.newSubtask = '';
-          this.saveTasks();
-        },
-
-        toggleSubtask(task, subtask) {
-          subtask.completed = !subtask.completed;
-          this.saveTasks();
-        },
-
-        removeSubtask(task, index) {
-          task.subtasks.splice(index, 1);
-          this.saveTasks();
-        },
-
-        // Comments functions
-        addComment(task) {
-          if (!task.newComment || !task.newComment.trim()) return;
-          const comment = { id: Date.now(), text: task.newComment.trim(), timestamp: new Date().toLocaleString() };
-          if (!task.comments) task.comments = [];
-          task.comments.push(comment);
-          task.newComment = '';
-          this.saveTasks();
-        },
-
-        removeComment(task, index) {
-          task.comments.splice(index, 1);
-          this.saveTasks();
-        },
-
-        // Attachments function
-        addAttachment(task, event) {
-          const file = event.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const attachment = { id: Date.now(), name: file.name, data: e.target.result };
-            if (!task.attachments) task.attachments = [];
-            task.attachments.push(attachment);
-            this.saveTasks();
-          };
-          reader.readAsDataURL(file);
-        }
-      }
-    }
-  </script>
+  <script defer src="todo-app.js"></script>
 </body>
 </html>
