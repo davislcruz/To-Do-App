@@ -1,222 +1,549 @@
 <!DOCTYPE html>
 <html lang="en" x-data="todoApp()" x-init="init()">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Combined Todo App</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: { extend: {} }
-    }
-  </script>
-  <!-- Alpine.js CDN -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
-<body class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white transition-colors duration-300">
-  <div class="container mx-auto p-4 max-w-2xl">
-    <!-- Header with Dark Mode Toggle -->
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">To‑Do List</h1>
-      <button @click="toggleTheme()" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700">
-        <span x-text="darkMode ? 'Light Mode' : 'Dark Mode'"></span>
-      </button>
-    </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Combined Todo App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: { extend: {} },
+      };
+    </script>
+    <script defer src="todo-app.js"></script>
+    <!-- Alpine.js CDN -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+  </head>
+  <body
+    class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white transition-colors duration-300"
+  >
+    <div class="container mx-auto p-4 max-w-2xl">
+      <!-- Header with Dark Mode Toggle -->
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">To‑Do List</h1>
+        <button
+          @click="toggleTheme()"
+          class="flex items-center px-3 py-1 rounded bg-gray-200 dark:bg-gray-700"
+          aria-label="Toggle dark mode"
+        >
+          <template x-if="darkMode">
+            <!-- Sun icon (indicates switching to light mode) -->
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </template>
+          <template x-if="!darkMode">
+            <!-- Moon icon (indicates switching to dark mode) -->
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"
+              />
+            </svg>
+          </template>
+          <span x-text="darkMode ? 'Light Mode' : 'Dark Mode'"></span>
+        </button>
+      </div>
 
-    <!-- Task Input Section -->
-    <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-      <form @submit.prevent="addTask()">
-        <div class="flex flex-col gap-4">
-          <input 
-            x-model="newTask.description" 
-            type="text" 
-            placeholder="Task title..." 
-            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600" 
-            required>
+      <!-- Task Input Section -->
+      <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+        <form @submit.prevent="addTask()">
+          <div class="flex flex-col gap-4">
+            <input
+              x-model="newTask.description"
+              type="text"
+              placeholder="Task title..."
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              aria-label="Task title"
+              required
+            />
 
-          <!-- Row containing Priority, Due Date, and Recurring (each w-1/3) -->
-          <div class="flex gap-4">
-            <select 
-              x-model="newTask.priority"
-              class="p-2 w-1/3 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
-              <option value="low">Low</option>
-              <option value="medium" selected>Medium</option>
-              <option value="high">High</option>
-            </select>
-            <input 
-              x-model="newTask.dueDate"
-              type="date"
-              class="p-2 w-1/3 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
-            <select 
-              x-model="newTask.recurring"
-              class="p-2 w-1/3 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
-              <option value="">None</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            <!-- Row containing Priority, Due Date, and Recurring (each flex-1) -->
+            <div class="flex flex-wrap gap-4">
+              <select
+                x-model="newTask.priority"
+                class="p-2 flex-1 rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                aria-label="Priority"
+              >
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+              <input
+                x-model="newTask.dueDate"
+                type="date"
+                class="p-2 flex-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                aria-label="Due date"
+              />
+              <select
+                x-model="newTask.recurring"
+                class="p-2 flex-1 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                aria-label="Recurring schedule"
+              >
+                <option value="">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
+            <!-- Task Detailed Notes (Full Row) -->
+            <textarea
+              x-model="newTask.notes"
+              placeholder="Detailed notes (supports Markdown)..."
+              class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              aria-label="Task notes"
+            ></textarea>
+
+            <button
+              type="submit"
+              class="flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              <span>Add Task</span>
+            </button>
           </div>
+        </form>
+      </div>
 
-          <!-- Task Detailed Notes (Full Row) -->
-          <textarea 
-            x-model="newTask.notes"
-            placeholder="Detailed notes (supports Markdown)..."
-            class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"></textarea>
-
-          <button 
-            type="submit" 
-            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            Add Task
+      <!-- Filters and Search -->
+      <div class="flex flex-col sm:flex-row gap-4 mb-6">
+        <div class="relative flex-1">
+          <div
+            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 text-gray-400"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
+          <input
+            x-model.trim="searchQuery"
+            type="text"
+            placeholder="Search tasks..."
+            class="p-2 pl-10 border w-full rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            aria-label="Search tasks"
+          />
+        </div>
+        <div class="flex gap-2">
+          <button
+            @click="filter='all'"
+            :class="{'bg-blue-500 text-white': filter==='all', 'bg-gray-200 dark:bg-gray-700': filter!=='all'}"
+            class="px-3 py-1 rounded hover:bg-blue-600"
+          >
+            All
+          </button>
+          <button
+            @click="filter='active'"
+            :class="{'bg-blue-500 text-white': filter==='active', 'bg-gray-200 dark:bg-gray-700': filter!=='active'}"
+            class="px-3 py-1 rounded hover:bg-blue-600"
+          >
+            Active
+          </button>
+          <button
+            @click="filter='completed'"
+            :class="{'bg-blue-500 text-white': filter==='completed', 'bg-gray-200 dark:bg-gray-700': filter!=='completed'}"
+            class="px-3 py-1 rounded hover:bg-blue-600"
+          >
+            Completed
           </button>
         </div>
-      </form>
-    </div>
-
-    <!-- Filters and Search -->
-    <div class="flex flex-col sm:flex-row gap-4 mb-6">
-      <input 
-        x-model.trim="searchQuery" 
-        type="text" 
-        placeholder="Search tasks..."
-        class="p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
-      <div class="flex gap-2">
-        <button @click="filter='all'" :class="{'bg-blue-500 text-white': filter==='all', 'bg-gray-200 dark:bg-gray-700': filter!=='all'}" class="px-3 py-1 rounded hover:bg-blue-600">All</button>
-        <button @click="filter='active'" :class="{'bg-blue-500 text-white': filter==='active', 'bg-gray-200 dark:bg-gray-700': filter!=='active'}" class="px-3 py-1 rounded hover:bg-blue-600">Active</button>
-        <button @click="filter='completed'" :class="{'bg-blue-500 text-white': filter==='completed', 'bg-gray-200 dark:bg-gray-700': filter!=='completed'}" class="px-3 py-1 rounded hover:bg-blue-600">Completed</button>
       </div>
-    </div>
 
-    <!-- Task List (Drag & Drop Container) -->
-    <div x-ref="taskList" class="space-y-2" @dragover.prevent @drop="dropTask($event)">
-      <template x-for="(task, index) in filteredTasks" :key="task.id">
-        <div 
-          draggable="true"
-          @dragstart="dragTask($event, index)"
-          class="p-3 bg-white dark:bg-gray-800 rounded-lg shadow"
-          :class="{
+      <!-- Task List (Drag & Drop Container) -->
+      <div
+        x-ref="taskList"
+        class="space-y-2"
+        @dragover.prevent
+        @drop="dropTask($event)"
+        aria-label="Tasks"
+      >
+        <template x-for="(task, index) in filteredTasks" :key="task.id">
+          <div
+            draggable="true"
+            @dragstart="dragTask($event, index)"
+            class="p-3 bg-white dark:bg-gray-800 rounded-lg shadow"
+            :class="{
             'border-l-4 border-green-500': task.priority==='low',
             'border-l-4 border-yellow-500': task.priority==='medium',
             'border-l-4 border-red-500': task.priority==='high'
-          }">
-          <div class="flex items-center">
-            <input 
-              type="checkbox" 
-              x-model="task.completed" 
-              @change="saveTasks()"
-              class="mr-3">
-            
-            <!-- Task display & (inline editing on double-click) -->
-            <div class="flex-1">
-              <div x-show="!task.editing" 
-                  @dblclick="enableEdit(task, index)" 
-                  :class="{'line-through text-gray-500': task.completed}">
-                <span x-text="task.description"></span>
-                <span class="text-sm text-gray-500 ml-2" x-text="task.dueDate"></span>
+          }"
+            role="listitem"
+          >
+            <div class="flex items-center">
+              <input
+                type="checkbox"
+                x-model="task.completed"
+                @change="saveTasks()"
+                class="mr-3"
+                :aria-label="`Mark ${task.description} as ${task.completed ? 'incomplete' : 'complete'}`"
+              />
+
+              <!-- Task display & (inline editing on double-click) -->
+              <div class="flex-1">
+                <div
+                  x-show="!task.editing"
+                  @dblclick="enableEdit(task, index)"
+                  :class="{'line-through text-gray-500': task.completed}"
+                >
+                  <span x-text="task.description"></span>
+                  <span
+                    class="text-sm text-gray-500 ml-2"
+                    x-text="task.dueDate"
+                  ></span>
+                </div>
+                <input
+                  x-show="task.editing"
+                  x-model="task.description"
+                  x-ref="editInputs"
+                  @blur="disableEdit(task, index)"
+                  @keyup.enter="disableEdit(task, index)"
+                  class="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
+                />
               </div>
-              <input 
-                x-show="task.editing" 
-                x-model="task.description" 
-                x-ref="editInputs"
-                @blur="disableEdit(task, index)" 
-                @keyup.enter="disableEdit(task, index)" 
-                class="w-full p-1 border rounded dark:bg-gray-700 dark:text-white">
+              <!-- Button to Toggle Details Panel -->
+              <button
+                @click="toggleDetails(task)"
+                class="ml-2 flex items-center px-2 py-1 border rounded dark:border-gray-600 transition-colors duration-300"
+                :aria-expanded="task.showDetails"
+                :aria-label="`${task.showDetails ? 'Hide' : 'Show'} details for ${task.description}`"
+              >
+                <span
+                  x-text="task.showDetails ? 'Hide Details' : 'Details'"
+                ></span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4 ml-1 transition-transform duration-300"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  :class="{'rotate-180': task.showDetails}"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              <!-- Delete Task -->
+              <button
+                @click="deleteTask(index)"
+                class="ml-2 p-1 text-red-500 hover:text-red-700"
+                aria-label="Delete task: ${task.description}"
+              >
+                ✕
+              </button>
             </div>
-            <!-- Button to Toggle Details Panel -->
-            <button @click="toggleDetails(task)" class="ml-2 px-2 py-1 border rounded dark:border-gray-600">
-              <span x-text="task.showDetails ? 'Hide Details' : 'Details'"></span>
-            </button>
-            <!-- Delete Task -->
-            <button @click="deleteTask(index)" class="ml-2 p-1 text-red-500 hover:text-red-700">✕</button>
-          </div>
-          
-          <!-- Details Panel -->
-          <div x-show="task.showDetails" class="mt-4 border-t pt-3">
-            <!-- Recurring Info -->
-            <div x-show="task.recurring">
-              <strong>Recurring:</strong> <span x-text="task.recurring"></span>
-            </div>
-            <!-- Notes -->
-            <div class="mt-2">
-              <label class="block text-sm font-medium">Notes:</label>
-              <textarea 
-                x-model="task.notes"
-                @blur="saveTasks()"
-                class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"></textarea>
-            </div>
-            <!-- Attachments -->
-            <div class="mt-2">
-              <label class="block text-sm font-medium">Attachments:</label>
-              <template x-if="task.attachments && task.attachments.length">
+
+            <!-- Details Panel -->
+            <div x-show="task.showDetails" class="mt-4 border-t pt-3">
+              <!-- Recurring Info -->
+              <div x-show="task.recurring">
+                <strong>Recurring:</strong>
+                <span x-text="task.recurring"></span>
+              </div>
+              <!-- Notes -->
+              <div class="mt-2">
+                <label class="block text-sm font-medium" for="notes-${index}"
+                  >Notes:</label
+                >
+                <textarea
+                  id="notes-${index}"
+                  x-model="task.notes"
+                  @blur="saveTasks()"
+                  class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  aria-label="Notes for task: ${task.description}"
+                ></textarea>
+              </div>
+              <!-- Attachments -->
+              <div class="mt-2">
+                <label
+                  class="block text-sm font-medium"
+                  for="attachments-${index}"
+                  >Attachments:</label
+                >
+                <template x-if="task.attachments && task.attachments.length">
+                  <ul class="list-disc ml-5">
+                    <template
+                      x-for="(att, aIndex) in task.attachments"
+                      :key="att.id"
+                    >
+                      <li>
+                        <template x-if="att.data.startsWith('data:image/')">
+                          <img
+                            :src="att.data"
+                            alt="Attachment preview"
+                            class="w-16 h-16 object-cover rounded"
+                          />
+                        </template>
+                        <template x-if="!att.data.startsWith('data:image/')">
+                          <a
+                            :href="att.data"
+                            download
+                            :title="att.name"
+                            class="underline text-blue-500"
+                            x-text="att.name"
+                            aria-label="Download attachment: ${att.name}"
+                          ></a>
+                        </template>
+                      </li>
+                    </template>
+                  </ul>
+                </template>
+                <div class="mt-1">
+                  <input
+                    id="attachments-${index}"
+                    type="file"
+                    @change="addAttachment(task, $event)"
+                    class="p-1 border rounded dark:bg-gray-700 dark:text-white"
+                    accept="*/*"
+                    aria-label="Add attachment for task: ${task.description}"
+                  />
+                </div>
+              </div>
+              <!-- Subtasks Section -->
+              <div class="mt-2">
+                <label class="block text-sm font-medium" for="subtasks-${index}"
+                  >Subtasks:</label
+                >
                 <ul class="list-disc ml-5">
-                  <template x-for="(att, aIndex) in task.attachments" :key="att.id">
-                    <li>
-                      <!-- If the attachment is an image (data URL starts with "data:image/"), show a small preview -->
-                      <template x-if="att.data.startsWith('data:image/')">
-                        <img :src="att.data" alt="Attachment" class="w-16 h-16 object-cover rounded">
-                      </template>
-                      <!-- Otherwise, show as a link -->
-                      <template x-if="!att.data.startsWith('data:image/')">
-                        <a :href="att.data" download :title="att.name" class="underline text-blue-500" x-text="att.name"></a>
-                      </template>
+                  <template
+                    x-for="(sub, sIndex) in task.subtasks"
+                    :key="sub.id"
+                  >
+                    <li class="flex items-center">
+                      <input
+                        type="checkbox"
+                        x-model="sub.completed"
+                        @change="saveTasks()"
+                        class="mr-2"
+                        :aria-label="`Mark subtask ${sub.description} as ${sub.completed ? 'incomplete' : 'complete'}`"
+                      />
+                      <span
+                        :class="{'line-through': sub.completed}"
+                        x-text="sub.description"
+                      ></span>
+                      <button
+                        @click="removeSubtask(task, sIndex)"
+                        class="ml-2 text-red-500 hover:text-red-700"
+                        aria-label="Remove subtask: ${sub.description}"
+                      >
+                        ✕
+                      </button>
                     </li>
                   </template>
                 </ul>
-              </template>
-              <!-- Button to add an attachment -->
-              <div class="mt-1">
-                <input type="file" @change="addAttachment(task, $event)" class="p-1 border rounded dark:bg-gray-700 dark:text-white" accept="*/*">
+                <div class="flex mt-2">
+                  <input
+                    id="subtasks-${index}"
+                    type="text"
+                    placeholder="Add subtask..."
+                    class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white"
+                    x-model="task.newSubtask"
+                    aria-label="New subtask for task: ${task.description}"
+                  />
+                  <button
+                    @click="addSubtask(task)"
+                    class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                    aria-label="Add subtask to task: ${task.description}"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+              <!-- Comments Section -->
+              <div class="mt-2">
+                <label class="block text-sm font-medium" for="comments-${index}"
+                  >Comments:</label
+                >
+                <ul class="list-disc ml-5">
+                  <template
+                    x-for="(comm, cIndex) in task.comments"
+                    :key="comm.id"
+                  >
+                    <li class="flex items-center">
+                      <span x-text="comm.text"></span>
+                      <span
+                        class="text-xs text-gray-500 ml-1"
+                        x-text="comm.timestamp"
+                      ></span>
+                      <button
+                        @click="removeComment(task, cIndex)"
+                        class="ml-2 text-red-500 hover:text-red-700"
+                        aria-label="Remove comment: ${comm.text}"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  </template>
+                </ul>
+                <div class="flex mt-2">
+                  <input
+                    id="comments-${index}"
+                    type="text"
+                    placeholder="Add comment..."
+                    class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white"
+                    x-model="task.newComment"
+                    aria-label="New comment for task: ${task.description}"
+                  />
+                  <button
+                    @click="addComment(task)"
+                    class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                    aria-label="Add comment to task: ${task.description}"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
-            <!-- Subtasks Section -->
-            <div class="mt-2">
-              <label class="block text-sm font-medium">Subtasks:</label>
-              <ul class="list-disc ml-5">
-                <template x-for="(sub, sIndex) in task.subtasks" :key="sub.id">
-                  <li class="flex items-center">
-                    <input type="checkbox" x-model="sub.completed" @change="saveTasks()" class="mr-2">
-                    <span :class="{'line-through': sub.completed}" x-text="sub.description"></span>
-                    <button @click="removeSubtask(task, sIndex)" class="ml-2 text-red-500 hover:text-red-700">✕</button>
-                  </li>
-                </template>
-              </ul>
-              <div class="flex mt-2">
-                <input type="text" placeholder="Add subtask..." class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white" x-model="task.newSubtask">
-                <button @click="addSubtask(task)" class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600">Add</button>
-              </div>
-            </div>
-            <!-- Comments Section -->
-            <div class="mt-2">
-              <label class="block text-sm font-medium">Comments:</label>
-              <ul class="list-disc ml-5">
-                <template x-for="(comm, cIndex) in task.comments" :key="comm.id">
-                  <li class="flex items-center">
-                    <span x-text="comm.text"></span>
-                    <span class="text-xs text-gray-500 ml-1" x-text="comm.timestamp"></span>
-                    <button @click="removeComment(task, cIndex)" class="ml-2 text-red-500 hover:text-red-700">✕</button>
-                  </li>
-                </template>
-              </ul>
-              <div class="flex mt-2">
-                <input type="text" placeholder="Add comment..." class="flex-1 p-1 border rounded dark:bg-gray-700 dark:text-white" x-model="task.newComment">
-                <button @click="addComment(task)" class="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600">Add</button>
-              </div>
-            </div>
+            <!-- End Details Panel -->
           </div>
-          <!-- End Details Panel -->
-        </div>
-      </template>
-    </div>
+        </template>
+      </div>
 
-    <!-- Footer Controls -->
-    <div class="mt-6 flex flex-col sm:flex-row gap-4">
-      <button @click="clearCompleted()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Clear Completed</button>
-      <button @click="exportTasks()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Export Tasks</button>
-      <input type="file" @change="importTasks($event)" class="p-2 border rounded dark:bg-gray-700 dark:text-white" accept=".json">
-      <button @click="undoDelete()" :disabled="lastDeleted === null" class="px-4 py-2 bg-gray-500 text-white rounded disabled:opacity-50 hover:bg-gray-600">Undo Delete</button>
+      <!-- Footer Controls -->
+      <div class="mt-6 flex flex-col sm:flex-row gap-4">
+        <!-- Clear Completed with Check Icon -->
+        <button
+          @click="clearCompleted()"
+          class="flex items-center justify-center flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300"
+          :disabled="!hasCompletedTasks"
+          :class="{'opacity-50 cursor-not-allowed': !hasCompletedTasks}"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 mr-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+          <span>Clear Completed</span>
+        </button>
+        <!-- Export Tasks with Download Icon -->
+        <button
+          @click="exportTasks()"
+          class="flex items-center justify-center flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-300"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 mr-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a2 2 0 002 2h14a2 2 0 002-2v-1M7 10l5 5m0 0l5-5m-5 5V3"
+            />
+          </svg>
+          <span>Export Tasks</span>
+        </button>
+        <!-- Import Tasks with Arrow-Up-Tray Icon -->
+        <button
+          @click="triggerFileInput()"
+          class="flex items-center justify-center flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300"
+        >
+          <!-- Arrow-Up-Tray Icon -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+            />
+          </svg>
+          <span>Import Tasks</span>
+        </button>
+        <input
+          type="file"
+          id="fileInput"
+          @change="importTasks($event)"
+          class="hidden"
+          accept=".json"
+        />
+        <!-- Undo Delete with Arrow-Uturn-Down Icon -->
+        <button
+          @click="undoDelete()"
+          :disabled="lastDeleted === null"
+          class="flex items-center justify-center flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors duration-300"
+          :class="{'opacity-50 cursor-not-allowed': lastDeleted === null}"
+        >
+          <!-- Arrow-Uturn-Down Icon -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+            />
+          </svg>
+          <span>Undo Delete</span>
+        </button>
+      </div>
     </div>
-  </div>
-  <script defer src="todo-app.js"></script>
-</body>
+  </body>
 </html>
